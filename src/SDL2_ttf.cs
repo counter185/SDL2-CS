@@ -35,10 +35,25 @@ namespace SDL2
 {
 	public static class SDL_ttf
 	{
-		#region SDL2# Variables
+        #region my additions
+        public class TTF_Font
+        {
+            public IntPtr Handle;
+            public IntPtr p
+            {
+                get { return Handle; }
+            }
+            public TTF_Font(IntPtr handle)
+            {
+                Handle = handle;
+            }
+        }
+        #endregion
 
-		/* Used by DllImport to load the native library. */
-		private const string nativeLibName = "SDL2_ttf";
+        #region SDL2# Variables
+
+        /* Used by DllImport to load the native library. */
+        private const string nativeLibName = "SDL2_ttf";
 
 		#endregion
 
@@ -117,6 +132,14 @@ namespace SDL2
 			int freesrc,
 			int ptsize
 		);
+		public static TTF_Font TTF_OpenFontRW(
+			SDL.SDL_RWOpsPtr src,
+			int freesrc,
+			int ptsize
+		)
+		{
+			return new TTF_Font(TTF_OpenFontRW(src.p, freesrc, ptsize));
+		}
 
 		/* IntPtr refers to a TTF_Font* */
 		[DllImport(nativeLibName, EntryPoint = "TTF_OpenFontIndex", CallingConvention = CallingConvention.Cdecl)]

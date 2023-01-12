@@ -193,7 +193,7 @@ namespace SDL2
 		/* This is an RWops macro in the C header. */
 		public static IntPtr Mix_LoadWAV(string file)
 		{
-			IntPtr rwops = SDL.SDL_RWFromFile(file, "rb");
+			IntPtr rwops = SDL.SDL_RWFromFile(file, "rb").p;
 			return Mix_LoadWAV_RW(rwops, 1);
 		}
 

@@ -28,7 +28,9 @@
 
 #region Using Statements
 using System;
+using System.Collections;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 #if NET6_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
 #endif
@@ -40,9 +42,60 @@ namespace SDL2
 {
 	public static class SDL
 	{
-		#region SDL2# Variables
+		#region my additions
+		public class SDL_Window
+		{
+			public IntPtr Handle;
+			public IntPtr p
+			{
+				get { return Handle; } 
+			}
+            public SDL_Window(IntPtr handle)
+            {
+                Handle = handle;
+            }
+        }		
+		public class SDL_Renderer
+		{
+			public IntPtr Handle;
+            public IntPtr p
+            {
+                get { return Handle; }
+            }
+            public SDL_Renderer(IntPtr handle)
+            {
+                Handle = handle;
+            }
+        }		
+		public class SDL_Texture
+		{
+			public IntPtr Handle;
+            public IntPtr p
+            {
+                get { return Handle; }
+            }
+            public SDL_Texture(IntPtr handle)
+            {
+                Handle = handle;
+            }
+        }
+        public class SDL_RWOpsPtr
+        {
+            public IntPtr Handle;
+            public IntPtr p
+            {
+                get { return Handle; }
+            }
+            public SDL_RWOpsPtr(IntPtr handle)
+            {
+                Handle = handle;
+            }
+        }
+        #endregion
 
-		private const string nativeLibName = "SDL2";
+        #region SDL2# Variables
+
+        private const string nativeLibName = "SDL2";
 
 		#endregion
 
@@ -279,7 +332,7 @@ namespace SDL2
 			byte* file,
 			byte* mode
 		);
-		public static unsafe IntPtr SDL_RWFromFile(
+		public static unsafe SDL_RWOpsPtr SDL_RWFromFile(
 			string file,
 			string mode
 		) {
@@ -291,16 +344,24 @@ namespace SDL2
 			);
 			Marshal.FreeHGlobal((IntPtr) utf8Mode);
 			Marshal.FreeHGlobal((IntPtr) utf8File);
-			return rwOps;
+			return new SDL_RWOpsPtr(rwOps);
 		}
 
 		/* IntPtr refers to an SDL_RWops* */
-		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
-		public static extern IntPtr SDL_AllocRW();
+		[DllImport(nativeLibName, EntryPoint = "SDL_AllocRW", CallingConvention = CallingConvention.Cdecl)]
+		public static extern IntPtr INTERNAL_SDL_AllocRW();
+		public static SDL_RWOpsPtr SDL_AllocRW() {
+			return new SDL_RWOpsPtr(INTERNAL_SDL_AllocRW());
+
+        }
 
 		/* area refers to an SDL_RWops* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern void SDL_FreeRW(IntPtr area);
+		public static void SDL_FreeRW(SDL_RWOpsPtr area)
+		{
+			SDL_FreeRW(area.p);
+		}
 
 		/* fp refers to a void* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
@@ -309,6 +370,16 @@ namespace SDL2
 		/* mem refers to a void*, IntPtr to an SDL_RWops* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern IntPtr SDL_RWFromMem(IntPtr mem, int size);
+		public unsafe static SDL_RWOpsPtr SDL_RWFromMem(byte[] mem)
+		{
+			return SDL_RWFromMem(mem, 0, mem.Length);
+		}
+		public unsafe static SDL_RWOpsPtr SDL_RWFromMem(byte[] mem, int offset, int size)
+		{
+            GCHandle pinnedArray = GCHandle.Alloc(mem, GCHandleType.Pinned);
+            IntPtr pointer = pinnedArray.AddrOfPinnedObject() + offset;
+			return new SDL_RWOpsPtr(SDL_RWFromMem(pointer,size));
+		}
 
 		/* mem refers to a const void*, IntPtr to an SDL_RWops* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
@@ -319,6 +390,10 @@ namespace SDL2
 		 */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern long SDL_RWsize(IntPtr context);
+		public static long SDL_RWsize(SDL_RWOpsPtr context)
+		{
+			return SDL_RWsize(context.p);
+		}
 
 		/* context refers to an SDL_RWops*.
 		 * Only available in SDL 2.0.10 or higher.
@@ -1624,7 +1699,7 @@ namespace SDL2
 			int h,
 			SDL_WindowFlags flags
 		);
-		public static unsafe IntPtr SDL_CreateWindow(
+		public static unsafe SDL_Window SDL_CreateWindow(
 			string title,
 			int x,
 			int y,
@@ -1634,16 +1709,16 @@ namespace SDL2
 		) {
 			int utf8TitleBufSize = Utf8Size(title);
 			byte* utf8Title = stackalloc byte[utf8TitleBufSize];
-			return INTERNAL_SDL_CreateWindow(
+			return new SDL_Window(INTERNAL_SDL_CreateWindow(
 				Utf8Encode(title, utf8Title, utf8TitleBufSize),
 				x, y, w, h,
 				flags
-			);
+			));
 		}
 
 		/* window refers to an SDL_Window*, renderer to an SDL_Renderer* */
-		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
-		public static extern int SDL_CreateWindowAndRenderer(
+		[DllImport(nativeLibName, EntryPoint = "SDL_CreateWindowAndRenderer", CallingConvention = CallingConvention.Cdecl)]
+		public static extern int INTERNAL_SDL_CreateWindowAndRenderer(
 			int width,
 			int height,
 			SDL_WindowFlags window_flags,
@@ -1651,13 +1726,31 @@ namespace SDL2
 			out IntPtr renderer
 		);
 
+		public static int SDL_CreateWindowAndRenderer(
+            int width,
+            int height,
+            SDL_WindowFlags window_flags,
+            out SDL_Window window,
+            out SDL_Renderer renderer)
+		{
+			int exit = INTERNAL_SDL_CreateWindowAndRenderer(width, height, window_flags, out IntPtr wdw, out IntPtr rdr);
+			window = new SDL_Window(wdw);
+			renderer = new SDL_Renderer(rdr);
+			return exit;
+		}
+
 		/* data refers to some native window type, IntPtr to an SDL_Window* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern IntPtr SDL_CreateWindowFrom(IntPtr data);
 
 		/* window refers to an SDL_Window* */
-		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
-		public static extern void SDL_DestroyWindow(IntPtr window);
+		[DllImport(nativeLibName, EntryPoint = "SDL_DestroyWindow", CallingConvention = CallingConvention.Cdecl)]
+		public static extern void INTERNAL_SDL_DestroyWindow(IntPtr window);
+
+		public static void SDL_DestroyWindow(SDL_Window window)
+		{
+			INTERNAL_SDL_DestroyWindow(window.Handle);
+		}
 
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern void SDL_DisableScreenSaver();
@@ -2555,15 +2648,24 @@ namespace SDL2
 		}
 
 		/* IntPtr refers to an SDL_Renderer*, window to an SDL_Window* */
-		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
-		public static extern IntPtr SDL_CreateRenderer(
+		[DllImport(nativeLibName, EntryPoint = "SDL_CreateRenderer", CallingConvention = CallingConvention.Cdecl)]
+		public static extern IntPtr INTERNAL_SDL_CreateRenderer(
 			IntPtr window,
 			int index,
 			SDL_RendererFlags flags
 		);
 
-		/* IntPtr refers to an SDL_Renderer*, surface to an SDL_Surface* */
-		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+		public static SDL_Renderer SDL_CreateRenderer(
+            SDL_Window window,
+            int index,
+            SDL_RendererFlags flags
+        )
+		{
+			return new SDL_Renderer(INTERNAL_SDL_CreateRenderer(window.p,index,flags));
+		}
+
+        /* IntPtr refers to an SDL_Renderer*, surface to an SDL_Surface* */
+        [DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern IntPtr SDL_CreateSoftwareRenderer(IntPtr surface);
 
 		/* IntPtr refers to an SDL_Texture*, renderer to an SDL_Renderer* */
@@ -2754,6 +2856,7 @@ namespace SDL2
 		/* renderer refers to an SDL_Renderer* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern int SDL_RenderClear(IntPtr renderer);
+		public static int SDL_RenderClear(SDL_Renderer renderer) => SDL_RenderClear(renderer.p);
 
 		/* renderer refers to an SDL_Renderer*, texture to an SDL_Texture* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
@@ -2994,7 +3097,15 @@ namespace SDL2
 		public static extern int SDL_RenderFillRect(
 			IntPtr renderer,
 			ref SDL_Rect rect
-		);
+		);		
+		public static int SDL_RenderFillRect(
+			SDL_Renderer renderer,
+			SDL_Rect rect
+		)
+		{
+			SDL_Rect t = rect;
+			return SDL_RenderFillRect(renderer.p, ref rect);
+		}
 
 		/* renderer refers to an SDL_Renderer*, rect to an SDL_Rect*.
 		 * This overload allows for IntPtr.Zero (null) to be passed for rect.
@@ -3370,8 +3481,10 @@ namespace SDL2
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern void SDL_RenderPresent(IntPtr renderer);
 
-		/* renderer refers to an SDL_Renderer* */
-		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+		public static void SDL_RenderPresent(SDL_Renderer renderer) => SDL_RenderPresent(renderer.p);
+
+        /* renderer refers to an SDL_Renderer* */
+        [DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern int SDL_RenderReadPixels(
 			IntPtr renderer,
 			ref SDL_Rect rect,
@@ -3443,7 +3556,14 @@ namespace SDL2
 			byte g,
 			byte b,
 			byte a
-		);
+		);		
+		public static int SDL_SetRenderDrawColor(
+			SDL_Renderer renderer,
+			byte r,
+			byte g,
+			byte b,
+			byte a
+		) => SDL_SetRenderDrawColor(renderer.p,r,g,b,a);
 
 		/* renderer refers to an SDL_Renderer*, texture to an SDL_Texture* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
@@ -4185,7 +4305,13 @@ namespace SDL2
 		{
 			public int x;
 			public int y;
-		}
+
+            public SDL_Point(int x, int y)
+            {
+                this.x = x;
+                this.y = y;
+            }
+        }
 
 		[StructLayout(LayoutKind.Sequential)]
 		public struct SDL_Rect
@@ -4194,7 +4320,15 @@ namespace SDL2
 			public int y;
 			public int w;
 			public int h;
-		}
+
+            public SDL_Rect(int x, int y, int w, int h)
+            {
+                this.x = x;
+                this.y = y;
+                this.w = w;
+                this.h = h;
+            }
+        }
 
 		/* Only available in 2.0.10 or higher. */
 		[StructLayout(LayoutKind.Sequential)]
@@ -4681,7 +4815,7 @@ namespace SDL2
 		);
 		public static IntPtr SDL_LoadBMP(string file)
 		{
-			IntPtr rwops = SDL_RWFromFile(file, "rb");
+			IntPtr rwops = SDL_RWFromFile(file, "rb").p;
 			return SDL_LoadBMP_RW(rwops, 1);
 		}
 
@@ -4718,7 +4852,7 @@ namespace SDL2
 		);
 		public static int SDL_SaveBMP(IntPtr surface, string file)
 		{
-			IntPtr rwops = SDL_RWFromFile(file, "wb");
+			IntPtr rwops = SDL_RWFromFile(file, "wb").p;
 			return SDL_SaveBMP_RW(surface, rwops, 1);
 		}
 
@@ -5522,8 +5656,8 @@ namespace SDL2
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern int SDL_PollEvent(out SDL_Event _event);
 
-		/* Waits indefinitely for the next event */
-		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+        /* Waits indefinitely for the next event */
+        [DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern int SDL_WaitEvent(out SDL_Event _event);
 
 		/* Waits until the specified timeout (in ms) for the next event
@@ -7082,7 +7216,7 @@ namespace SDL2
 		);
 		public static int SDL_GameControllerAddMappingsFromFile(string file)
 		{
-			IntPtr rwops = SDL_RWFromFile(file, "rb");
+			IntPtr rwops = SDL_RWFromFile(file, "rb").p;
 			return INTERNAL_SDL_GameControllerAddMappingsFromRW(rwops, 1);
 		}
 
@@ -8206,7 +8340,7 @@ namespace SDL2
 			out IntPtr audio_buf,
 			out uint audio_len
 		) {
-			IntPtr rwops = SDL_RWFromFile(file, "rb");
+			IntPtr rwops = SDL_RWFromFile(file, "rb").p;
 			return SDL_LoadWAV_RW(
 				rwops,
 				1,
