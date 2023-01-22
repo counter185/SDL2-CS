@@ -29,6 +29,7 @@
 #region Using Statements
 using System;
 using System.Runtime.InteropServices;
+using static SDL2.SDL;
 #endregion
 
 namespace SDL2
@@ -161,6 +162,11 @@ namespace SDL2
 			IntPtr src,
 			int freesrc
 		);
+		public static SDL_Texture IMG_LoadTexture_RW(
+			SDL_Renderer renderer,
+			SDL_RWOpsPtr src,
+			int freesrc
+		) => new SDL_Texture(IMG_LoadTexture_RW(renderer.p, src.p, freesrc));
 
 		/* renderer refers to an SDL_Renderer*.
 		 * src refers to an SDL_RWops*.

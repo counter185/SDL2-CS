@@ -79,6 +79,18 @@ namespace SDL2
                 Handle = handle;
             }
         }
+		public class SDL_SurfacePtr
+		{
+			public IntPtr Handle;
+            public IntPtr p
+            {
+                get { return Handle; }
+            }
+            public SDL_SurfacePtr(IntPtr handle)
+            {
+                Handle = handle;
+            }
+        }
         public class SDL_RWOpsPtr
         {
             public IntPtr Handle;
@@ -2687,6 +2699,10 @@ namespace SDL2
 			IntPtr renderer,
 			IntPtr surface
 		);
+		public static SDL_Texture SDL_CreateTextureFromSurface(
+			SDL_Renderer renderer,
+			SDL_SurfacePtr surface
+		) => new SDL_Texture(SDL_CreateTextureFromSurface(renderer.p, surface.p));
 
 		/* renderer refers to an SDL_Renderer* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
@@ -2852,6 +2868,13 @@ namespace SDL2
 			out int w,
 			out int h
 		);
+		public static int SDL_QueryTexture(
+			SDL_Texture texture,
+			out uint format,
+			out int access,
+			out int w,
+			out int h
+		) => SDL_QueryTexture(texture.p, out format, out access, out w, out h);
 
 		/* renderer refers to an SDL_Renderer* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
@@ -2866,6 +2889,35 @@ namespace SDL2
 			ref SDL_Rect srcrect,
 			ref SDL_Rect dstrect
 		);
+		
+		public static int SDL_RenderCopy(
+			SDL_Renderer renderer,
+			SDL_Texture texture,
+			SDL_Rect? srcrect,
+			SDL_Rect? dstrect
+		)
+		{
+			bool hasSrc = srcrect.HasValue;
+			bool hasDst = dstrect.HasValue;
+			SDL_Rect src = srcrect.GetValueOrDefault();
+			SDL_Rect dst = dstrect.GetValueOrDefault();
+			if (hasSrc && hasDst)
+			{
+                return SDL_RenderCopy(renderer.p, texture.p, ref src, ref dst);
+            }
+			else if (!hasSrc && hasDst)
+			{
+                return SDL_RenderCopy(renderer.p, texture.p, IntPtr.Zero, ref dst);
+            }
+			else if (hasSrc && !hasDst)
+			{
+                return SDL_RenderCopy(renderer.p, texture.p, ref src, IntPtr.Zero);
+            }
+            else 
+            {
+                return SDL_RenderCopy(renderer.p, texture.p, IntPtr.Zero, IntPtr.Zero);
+            }
+		} 
 
 		/* renderer refers to an SDL_Renderer*, texture to an SDL_Texture*.
 		 * Internally, this function contains logic to use default values when
@@ -3547,6 +3599,10 @@ namespace SDL2
 			IntPtr renderer,
 			SDL_BlendMode blendMode
 		);
+		public static int SDL_SetRenderDrawBlendMode(
+			SDL_Renderer renderer,
+			SDL_BlendMode blendMode
+		) => SDL_SetRenderDrawBlendMode(renderer.p, blendMode);
 
 		/* renderer refers to an SDL_Renderer* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
@@ -3578,6 +3634,10 @@ namespace SDL2
 			IntPtr texture,
 			byte alpha
 		);
+		public static int SDL_SetTextureAlphaMod(
+			SDL_Texture texture,
+			byte alpha
+		) => SDL_SetTextureAlphaMod(texture.p, alpha);
 
 		/* texture refers to an SDL_Texture* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
@@ -3594,6 +3654,12 @@ namespace SDL2
 			byte g,
 			byte b
 		);
+		public static int SDL_SetTextureColorMod(
+			SDL_Texture texture,
+			byte r,
+			byte g,
+			byte b
+		) => SDL_SetTextureColorMod(texture.p, r, g, b);
 
 		/* texture refers to an SDL_Texture* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
@@ -4153,6 +4219,14 @@ namespace SDL2
 			public byte g;
 			public byte b;
 			public byte a;
+
+			public SDL_Color(byte r, byte g, byte b, byte a)
+			{
+				this.r = r;
+				this.g = g;
+				this.b = b;
+				this.a = a;
+			}
 		}
 
 		[StructLayout(LayoutKind.Sequential)]
@@ -4761,6 +4835,7 @@ namespace SDL2
 		/* surface refers to an SDL_Surface* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern void SDL_FreeSurface(IntPtr surface);
+		public static void SDL_FreeSurface(SDL_SurfacePtr surface) => SDL_FreeSurface(surface.p);
 
 		/* surface refers to an SDL_Surface* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]

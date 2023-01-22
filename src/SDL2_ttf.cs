@@ -29,6 +29,7 @@
 #region Using Statements
 using System;
 using System.Runtime.InteropServices;
+using static SDL2.SDL;
 #endregion
 
 namespace SDL2
@@ -299,6 +300,15 @@ namespace SDL2
 			out int maxy,
 			out int advance
 		);
+		public static int TTF_GlyphMetrics32(
+			TTF_Font font,
+			uint ch,
+			out int minx,
+			out int maxx,
+			out int miny,
+			out int maxy,
+			out int advance
+		) => TTF_GlyphMetrics32(font.p, ch, out minx, out maxx, out miny, out maxy, out advance);
 
 		/* font refers to a TTF_Font* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
@@ -727,8 +737,16 @@ namespace SDL2
 		public static extern IntPtr TTF_RenderGlyph32_Blended(
 			IntPtr font,
 			uint ch,
-			SDL.SDL_Color fg
+			SDL_Color fg
 		);
+		public static SDL_SurfacePtr TTF_RenderGlyph32_Blended(
+			TTF_Font font,
+			uint ch,
+			SDL_Color fg
+		)
+		{
+			return new SDL_SurfacePtr(TTF_RenderGlyph32_Blended(font.p, ch, fg));
+		} 
 
 		/* Only available in 2.0.16 or higher. */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
