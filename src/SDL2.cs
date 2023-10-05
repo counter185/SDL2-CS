@@ -28,6 +28,7 @@
 
 #region Using Statements
 using System;
+using System.CodeDom;
 using System.Collections;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -43,64 +44,46 @@ namespace SDL2
 	public static class SDL
 	{
 		#region my additions
-		public class SDL_Window
-		{
+		public class PointerWrapper
+        {
 			public IntPtr Handle;
 			public IntPtr p
 			{
-				get { return Handle; } 
+				get { return Handle; }
 			}
-            public SDL_Window(IntPtr handle)
-            {
-                Handle = handle;
-            }
-        }		
-		public class SDL_Renderer
-		{
-			public IntPtr Handle;
-            public IntPtr p
-            {
-                get { return Handle; }
-            }
-            public SDL_Renderer(IntPtr handle)
-            {
-                Handle = handle;
-            }
-        }		
-		public class SDL_Texture
-		{
-			public IntPtr Handle;
-            public IntPtr p
-            {
-                get { return Handle; }
-            }
-            public SDL_Texture(IntPtr handle)
-            {
-                Handle = handle;
-            }
-        }
-		public class SDL_SurfacePtr
-		{
-			public IntPtr Handle;
-            public IntPtr p
-            {
-                get { return Handle; }
-            }
-            public SDL_SurfacePtr(IntPtr handle)
-            {
-                Handle = handle;
-            }
-        }
-        public class SDL_RWOpsPtr
+			public PointerWrapper(IntPtr handle)
+			{
+				Handle = handle;
+			}
+		}
+        public class SDL_Window : PointerWrapper
         {
-            public IntPtr Handle;
-            public IntPtr p
+            public SDL_Window(IntPtr handle) : base(handle)
             {
-                get { return Handle; }
             }
-            public SDL_RWOpsPtr(IntPtr handle)
+        }
+        public class SDL_Renderer : PointerWrapper
+		{
+            public SDL_Renderer(IntPtr handle) : base(handle)
             {
-                Handle = handle;
+            }
+        }		
+		public class SDL_Texture : PointerWrapper
+		{
+            public SDL_Texture(IntPtr handle) : base(handle)
+            {
+            }
+        }
+		public class SDL_SurfacePtr : PointerWrapper
+		{
+            public SDL_SurfacePtr(IntPtr handle) : base(handle)
+            {
+            }
+        }
+        public class SDL_RWOpsPtr : PointerWrapper
+        {
+            public SDL_RWOpsPtr(IntPtr handle) : base(handle)
+            {
             }
         }
         #endregion
@@ -2689,6 +2672,13 @@ namespace SDL2
 			int w,
 			int h
 		);
+		public static SDL_Texture SDL_CreateTexture(
+			SDL_Renderer renderer,
+			uint format,
+			SDL_TextureAccess access,
+			int w,
+			int h
+		) => new SDL_Texture(SDL_CreateTexture(renderer.p, format, (int)access, w, h));
 
 		/* IntPtr refers to an SDL_Texture*
 		 * renderer refers to an SDL_Renderer*
@@ -2711,6 +2701,7 @@ namespace SDL2
 		/* texture refers to an SDL_Texture* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern void SDL_DestroyTexture(IntPtr texture);
+		public static void SDL_DestroyTexture(SDL_Texture texture) => SDL_DestroyTexture(texture.p);
 
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern int SDL_GetNumRenderDrivers();
@@ -2822,6 +2813,13 @@ namespace SDL2
 			out IntPtr pixels,
 			out int pitch
 		);
+		public static int SDL_LockTexture(SDL_Texture texture, SDL_Rect? rect, out IntPtr pixels, out int pitch)
+        {
+			SDL_Rect refv = rect.HasValue ? rect.Value : new SDL_Rect();
+			return
+				rect.HasValue ? SDL_LockTexture(texture.p, ref refv, out pixels, out pitch)
+				: SDL_LockTexture(texture.p, IntPtr.Zero, out pixels, out pitch);
+        }
 
 		/* texture refers to an SDL_Texture*, pixels to a void*.
 		 * Internally, this function contains logic to use default values when
@@ -3095,6 +3093,13 @@ namespace SDL2
 			int x2,
 			int y2
 		);
+		public static int SDL_RenderDrawLine(
+			SDL_Renderer renderer,
+			int x1,
+			int y1,
+			int x2,
+			int y2
+		) => SDL_RenderDrawLine(renderer.p, x1, y1, x2, y2);
 
 		/* renderer refers to an SDL_Renderer* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
@@ -3126,7 +3131,14 @@ namespace SDL2
 			IntPtr renderer,
 			ref SDL_Rect rect
 		);
-
+		public static int SDL_RenderDrawRect(
+			SDL_Renderer renderer,
+			SDL_Rect rect
+		)
+		{
+			SDL_Rect t = rect;
+			return SDL_RenderDrawRect(renderer.p, ref rect);
+		}
 		/* renderer refers to an SDL_Renderer*, rect to an SDL_Rect*.
 		 * This overload allows for IntPtr.Zero (null) to be passed for rect.
 		 */
@@ -3544,6 +3556,26 @@ namespace SDL2
 			IntPtr pixels,
 			int pitch
 		);
+		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+		public static extern int SDL_RenderReadPixels(
+			IntPtr renderer,
+			IntPtr rect,
+			uint format,
+			IntPtr pixels,
+			int pitch
+		);
+		public static int SDL_RenderReadPixels(
+			SDL_Renderer renderer,
+			SDL_Rect? rect,
+			uint format,
+			IntPtr pixels,
+			int pitch)
+        {
+			SDL_Rect rectv = rect.HasValue ? rect.Value : new SDL_Rect();
+			return rect.HasValue ? SDL_RenderReadPixels(renderer.p, ref rectv, format, pixels, pitch)
+				: SDL_RenderReadPixels(renderer.p, IntPtr.Zero, format, pixels, pitch);
+
+		}
 
 		/* renderer refers to an SDL_Renderer* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
@@ -3620,6 +3652,10 @@ namespace SDL2
 			byte b,
 			byte a
 		) => SDL_SetRenderDrawColor(renderer.p,r,g,b,a);
+		public static int SDL_SetRenderDrawColor(
+			SDL_Renderer renderer,
+			SDL_Color color
+		) => SDL_SetRenderDrawColor(renderer.p,color.r,color.g,color.b,color.a);
 
 		/* renderer refers to an SDL_Renderer*, texture to an SDL_Texture* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
@@ -3627,6 +3663,10 @@ namespace SDL2
 			IntPtr renderer,
 			IntPtr texture
 		);
+		public static int SDL_SetRenderTarget(
+			SDL_Renderer renderer,
+			SDL_Texture texture
+		) => SDL_SetRenderTarget(renderer.p, texture != null ? texture.p : IntPtr.Zero);
 
 		/* texture refers to an SDL_Texture* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
@@ -3664,6 +3704,7 @@ namespace SDL2
 		/* texture refers to an SDL_Texture* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern void SDL_UnlockTexture(IntPtr texture);
+		public static void SDL_UnlockTexture(SDL_Texture texture) => SDL_UnlockTexture(texture.p);
 
 		/* texture refers to an SDL_Texture* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
@@ -4220,7 +4261,17 @@ namespace SDL2
 			public byte b;
 			public byte a;
 
-			public SDL_Color(byte r, byte g, byte b, byte a)
+			/// <summary>
+			/// 
+			/// </summary>
+			/// <param name="a"></param>
+			/// <returns>Inverted color with the alpha unaffected</returns>
+			public static SDL_Color operator ~(SDL_Color a)
+			{
+				return new SDL_Color((byte)~a.r, (byte)~a.g, (byte)~a.b, a.a);
+			}
+
+            public SDL_Color(byte r, byte g, byte b, byte a)
 			{
 				this.r = r;
 				this.g = g;
@@ -4395,7 +4446,17 @@ namespace SDL2
 			public int w;
 			public int h;
 
-            public SDL_Rect(int x, int y, int w, int h)
+            /// <summary>
+            /// Floats are converted to ints
+            /// </summary>
+            public SDL_Rect(float x, float y, float w, float h)
+			{
+				this.x = (int)x;
+				this.y = (int)y;
+				this.w = (int)w;
+				this.h = (int)h;
+			}
+			public SDL_Rect(int x, int y, int w, int h)
             {
                 this.x = x;
                 this.y = y;
