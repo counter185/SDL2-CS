@@ -43,8 +43,21 @@ namespace SDL2
 {
 	public static class SDL
 	{
-		#region my additions
-		public class PointerWrapper
+        #region my additions
+        public unsafe class StringW : IDisposable
+        {
+			public byte* utf8;
+			public StringW(string a)
+			{
+				utf8 = Utf8EncodeHeap(a);
+			}
+            public void Dispose()
+            {
+                Marshal.FreeHGlobal((IntPtr)utf8);
+            }
+        }
+
+        public class PointerWrapper
         {
 			public IntPtr Handle;
 			public IntPtr p
@@ -55,7 +68,20 @@ namespace SDL2
 			{
 				Handle = handle;
 			}
-		}
+            public override bool Equals(object obj)
+            {
+				if (obj == null)
+				{
+					return p == null;
+				}
+                return obj is PointerWrapper && (((PointerWrapper)obj).p == this.p);
+            }
+
+            public override int GetHashCode()
+            {
+                return 1786700523 + Handle.GetHashCode();
+            }
+        }
         public class SDL_Window : PointerWrapper
         {
             public SDL_Window(IntPtr handle) : base(handle)
@@ -2697,6 +2723,7 @@ namespace SDL2
 		/* renderer refers to an SDL_Renderer* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
 		public static extern void SDL_DestroyRenderer(IntPtr renderer);
+		public static void SDL_DestroyRenderer(SDL_Renderer renderer) => SDL_DestroyRenderer(renderer.p);
 
 		/* texture refers to an SDL_Texture* */
 		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]

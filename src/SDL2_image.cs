@@ -92,23 +92,27 @@ namespace SDL2
 		private static extern unsafe IntPtr INTERNAL_IMG_Load(
 			byte* file
 		);
-		public static unsafe IntPtr IMG_Load(string file)
+		public static unsafe SDL_SurfacePtr IMG_Load(string file)
 		{
 			byte* utf8File = SDL.Utf8EncodeHeap(file);
 			IntPtr handle = INTERNAL_IMG_Load(
 				utf8File
 			);
 			Marshal.FreeHGlobal((IntPtr) utf8File);
-			return handle;
+			return new SDL_SurfacePtr(handle);
 		}
 
 		/* src refers to an SDL_RWops*, IntPtr to an SDL_Surface* */
 		/* THIS IS A PUBLIC RWops FUNCTION! */
-		[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
-		public static extern IntPtr IMG_Load_RW(
+		[DllImport(nativeLibName, EntryPoint = "IMG_Load_RW", CallingConvention = CallingConvention.Cdecl)]
+		public static extern IntPtr INTERNAL_IMG_Load_RW(
 			IntPtr src,
 			int freesrc
 		);
+		public static SDL_SurfacePtr IMG_Load_RW(
+			IntPtr src,
+			int freesrc
+		) => new SDL_SurfacePtr(INTERNAL_IMG_Load_RW(src, freesrc));
 
 		/* src refers to an SDL_RWops*, IntPtr to an SDL_Surface* */
 		/* THIS IS A PUBLIC RWops FUNCTION! */
